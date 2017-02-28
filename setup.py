@@ -1,15 +1,13 @@
-from distutils.core import setup
+from setuptools import setup
 
 setup(
-    name='Python Multiprocessing Wrapper',
+    name='mpwrapper',
     packages=['mpwrapper'],
-    version='1.0.0',
+    version='1.0.1',
     description='A simple wrapper written to make the use of Python multiprocessing easy to use',
-    long_description=open("README.md").read(),
     author='Shaun Lodder',
     author_email='shaun.lodder@gmail.com',
     url='https://github.com/lodder/python_mpwrapper',
-    download_url='download link you saved',
     keywords=['multiprocessing'],
     classifiers=[],
     install_requires=[
