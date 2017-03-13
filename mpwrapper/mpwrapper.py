@@ -1,6 +1,6 @@
 import sys, time, logging
 import multiprocessing as mp
-from fifo import FiFoQueue, EmptyQueueObj
+from .fifo import FiFoQueue, EmptyQueueObj
 from multiprocessing.managers import BaseManager
 
 
