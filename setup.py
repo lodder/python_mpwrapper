@@ -1,17 +1,21 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='mpwrapper',
-    packages=['mpwrapper'],
-    version='1.0.2',
+    version='1.0.6',
     description='A simple wrapper written to make the use of Python multiprocessing easy to use',
     author='Shaun Lodder',
     author_email='shaun.lodder@gmail.com',
     url='https://github.com/lodder/python_mpwrapper',
     keywords=['multiprocessing'],
-    classifiers=[],
+    classifiers=[
+        "Programming Language :: Python"
+    ],
+    packages=find_packages(),
+    include_package_data=True,
     install_requires=[
-        'numpy==1.12.0'
+        'setuptools',
+        'numpy'
     ],
     extras_require={
         'develop': ['nose']

@@ -1,0 +1,25 @@
+language: python
+python:
+- '2.7'
+- '3.3'
+- '3.4'
+- '3.5'
+- '3.6'
+- 3.6-dev
+- 3.7-dev
+install:
+- pip install --upgrade pip
+- pip install .[test]
+script:
+- nosetests
+deploy:
+  provider: pypi
+  user: lodder
+  password:
+    secure: mHNdCVBWncD1lY/fY/BV1zkieBECOJWqeBAWbSsQ2CxfKaTX+lKYPlZR8FWvE1023Q7zJrbDCqTpoDiYQVVFjc2vyDnjpWrI0ufqEOnVlwRzTX5TlpuNhl4EgRgjVhFE28Euy1ckBhTxtJqsHyPbNg7h0xmIPr6iidXqbjGOX+PVHOM1G4q3W6R+4586GJRXGZXgpaq8oiQ21O4pRi9umAgoZNl9YZg+NBD6jLhfCe9bsmmpn9JxRO/7Hz7q8bvUBS+NGValfM0Z8Xb6TQowext0TatXeqn0xvrP4pYQSISpNJOYx8gLNpBfmmTji5JRS8B/he0rOdEi4HZ8Eoo8TcdcQ55CxPm3nPiXCSm9RneODzYzKLNK/WBOkoub7C9GtOARavwzgoSOOF0YjMtemeballqPVBTIewMg0LvgfIFPh0uGoI7tweRnOZtNgIvl1OQDk6Dtr+yUfXS11u/9+8yDaDUq4QkJa3yGLC2H6xuXmBlc7380a7GDq+g27o+qp8U1qoeH3fgnMEPRYPyrM8D+VFQIjNE5Kj2mrbIk56sGL2Zbo8UcrxYujj/I4swGMe35F44S+mb0GivU0sk3KJ/h+0HyHCpF4wKK7FV63eDVTThCdasW2p6GWQLwreml1K5hVRCEMb+hr21yoY95psgTo5eiBMAIcfbyTN5VU0w=
+  on:
+    tags: true
+    branch: master
+  distributions: sdist bdist_wheel
+notifications:
+  email: true
