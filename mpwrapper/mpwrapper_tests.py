@@ -1,5 +1,5 @@
 import numpy as np
-from mpwrapper import MpWrapper
+from .mpwrapper import MpWrapper
 import unittest, sys
 
 
