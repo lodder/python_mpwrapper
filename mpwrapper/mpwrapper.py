@@ -34,53 +34,76 @@ class MpWrapper(object):
         self.validate_tasks(tasks_list)
         n_tasks = len(tasks_list)
 
-        # create input and output queues
-        try:
-            BaseManager.register('FiFoQueue', FiFoQueue)
-            BaseManager.register('ExcecutionTracker', ExcecutionTracker)
-            manager = BaseManager()
-            manager.start()
-            request_queue = manager.FiFoQueue()
-            result_queue = manager.FiFoQueue()
-            tracker = manager.ExcecutionTracker()
-        except:
-            logging.error('Unable to start BaseManager. \n'
-                          'This is most likely due to an \'if __name__ == \'__main__\':\''
-                          ' statement not being present in your main executing script.\n'
-                          'See https://healthq.atlassian.net/browse/DMH-212?focusedCommentId=25606&page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel#comment-25606'
-                          ' http://stackoverflow.com/a/18205006 for more details')
-            raise
-
-        # fill input queue with tasks
-        request_queue.push_multiple(tasks_list)
-
         # only run multithreaded if we can
         start_time = time.time()
         if self.run_multithreaded:
+            # create input and output queues
+            try:
+                BaseManager.register('FiFoQueue', FiFoQueue)
+                BaseManager.register('ExcecutionTracker', ExcecutionTracker)
+                manager = BaseManager()
+                manager.start()
+                request_queue = manager.FiFoQueue()
+                result_queue = manager.FiFoQueue()
+                tracker = manager.ExcecutionTracker()
+            except:
+                logging.error('Unable to start BaseManager. \n'
+                              'This is most likely due to an \'if __name__ == \'__main__\':\''
+                              ' statement not being present in your main executing script.\n'
+                              'See https://healthq.atlassian.net/browse/DMH-212?focusedCommentId=25606&page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel#comment-25606'
+                              ' http://stackoverflow.com/a/18205006 for more details')
+                raise
+
+            # fill input queue with tasks
+            request_queue.push_multiple(tasks_list)
+
             if self.n_threads is None:
                 self.n_threads = mp.cpu_count()
             nodes = [WorkerNode(request_queue, result_queue, tracker, execute_fn) for i in range(0, self.n_threads)]
             for node in nodes:
                 node.start()
-        else:
-            nodes = [WorkerNode(request_queue, result_queue, tracker, execute_fn)]
-            nodes[0].run()  # execution will be done on the same thread (note we call run() here and not start())
-        self.elapsed_time = time.time() - start_time
 
-        # wait for all execution nodes to finish
-        while not request_queue.is_empty() or any([node.is_alive() for node in nodes]):
-            if progress_fn is not None:
-                success = tracker.get_success()
-                errors, _ = tracker.get_errors()
-                progress = 0 if n_tasks == 0 else 100.0 * (success + errors) / n_tasks
-                progress_fn(progress, success, errors)
-            time.sleep(0.1)
+            # wait for all execution nodes to finish
+            while not request_queue.is_empty() or any([node.is_alive() for node in nodes]):
+                if progress_fn is not None:
+                    success = tracker.get_success()
+                    errors, _ = tracker.get_errors()
+                    progress = 0 if n_tasks == 0 else 100.0 * (success + errors) / n_tasks
+                    progress_fn(progress, success, errors)
+                time.sleep(0.1)
+        else:
+            result_queue = FiFoQueue()
+            tracker = ExcecutionTracker()
+            for task in tasks_list:
+                request_queue = FiFoQueue()
+                request_queue.push(task)
+                node = WorkerNode(request_queue, result_queue, tracker, execute_fn)
+                node.run()  # execution will be done on the same thread (note we call run() here and not start())
+
+                if progress_fn is not None:
+                    success = tracker.get_success()
+                    errors, _ = tracker.get_errors()
+                    progress = 0 if n_tasks == 0 else 100.0 * (success + errors) / n_tasks
+                    progress_fn(progress, success, errors)
+
+        self.elapsed_time = time.time() - start_time
 
         # read all outputs into a list
         lst_outputs = result_queue.pop_all()
 
         # log execution results and return output
         return lst_outputs
+
+    def run_with_progress(self, tasks_list, execute_fn):
+        from .progress_fn import ProgressFn
+        fn = ProgressFn()
+        try:
+            fn.start_print_progress()
+            return self.run(tasks_list=tasks_list, execute_fn=execute_fn, progress_fn=fn.progress)
+        except:
+            raise
+        finally:
+            fn.stop_print_progress()
 
     def validate_tasks(self, tasks_list):
         for task in tasks_list:

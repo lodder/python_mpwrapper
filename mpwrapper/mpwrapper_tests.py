@@ -70,3 +70,21 @@ class test_execution(unittest.TestCase):
         # validate by checking that the tasks ran in the same sequence that they were added to the task list
         for i in range(0, n_items):
             self.assertEqual(task_list[i]['value1'], results[i])
+
+    def test_execution_with_progress(self):
+        # set up
+        n_items = 100
+        task_list = [{'value1': i} for i in range(0, n_items)]
+
+        def execute_task(task):
+            import time
+            time.sleep(0.1)
+            return task['value1']
+
+        # action
+        excecutor = MpWrapper(multithreaded_if_possible=False)
+        results = excecutor.run_with_progress(task_list, execute_task)
+
+        # validate by checking that the tasks ran in the same sequence that they were added to the task list
+        for i in range(0, n_items):
+            self.assertEqual(task_list[i]['value1'], results[i])
