@@ -34,6 +34,13 @@ class MpWrapper(object):
         self.validate_tasks(tasks_list)
         n_tasks = len(tasks_list)
 
+        def submit_progress():
+            if progress_fn is not None:
+                success = tracker.get_success()
+                errors, _ = tracker.get_errors()
+                progress = 0 if n_tasks == 0 else 100.0 * (success + errors) / n_tasks
+                progress_fn(progress, success, errors)
+
         # only run multithreaded if we can
         start_time = time.time()
         if self.run_multithreaded:
@@ -65,27 +72,19 @@ class MpWrapper(object):
 
             # wait for all execution nodes to finish
             while not request_queue.is_empty() or any([node.is_alive() for node in nodes]):
-                if progress_fn is not None:
-                    success = tracker.get_success()
-                    errors, _ = tracker.get_errors()
-                    progress = 0 if n_tasks == 0 else 100.0 * (success + errors) / n_tasks
-                    progress_fn(progress, success, errors)
+                submit_progress()
                 time.sleep(0.1)
         else:
+            request_queue = FiFoQueue()
             result_queue = FiFoQueue()
             tracker = ExcecutionTracker()
+            node = WorkerNode(request_queue, result_queue, tracker, execute_fn)
             for task in tasks_list:
-                request_queue = FiFoQueue()
                 request_queue.push(task)
-                node = WorkerNode(request_queue, result_queue, tracker, execute_fn)
                 node.run()  # execution will be done on the same thread (note we call run() here and not start())
+                submit_progress()
 
-                if progress_fn is not None:
-                    success = tracker.get_success()
-                    errors, _ = tracker.get_errors()
-                    progress = 0 if n_tasks == 0 else 100.0 * (success + errors) / n_tasks
-                    progress_fn(progress, success, errors)
-
+        submit_progress()
         self.elapsed_time = time.time() - start_time
 
         # read all outputs into a list
