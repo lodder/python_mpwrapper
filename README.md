@@ -29,6 +29,9 @@ def progress(percent, completed, errors):
 # action
 results = MpWrapper().run(task_list, execute_task, progress)
 
+# alternatively to above (will print progress to console)
+results = MpWrapper().run_with_progress(task_list, execute_task)
+
 ```
 
 ## Optional parameters

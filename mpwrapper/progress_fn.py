@@ -24,7 +24,8 @@ class ProgressFn():
             self.execution_tracker['last_progress'] = \
                 ('%100s' % '\r%.1f%% | %d completed | %d errors | %.0f min elapsed | %.0f min remaining' %
                  (percent, completed, errors, elapsed_time / 60, est_remaining / 60))
-            print(self.execution_tracker['last_progress'], end='\r')
+            sys.stdout.write(self.execution_tracker['last_progress'])
+            sys.stdout.flush()
 
     def start_print_progress(self):
         self.start_time = time.time()
