@@ -9,8 +9,9 @@ from multiprocessing.managers import BaseManager
 # -----------------------------------------------------------
 
 class MpWrapper(object):
-    def __init__(self, multithreaded_if_possible=True, n_threads=None):
+    def __init__(self, multithreaded_if_possible=True, n_threads=None, recycle_proc_after=0):
         self.n_threads = n_threads
+        self.recycle_proc_after = recycle_proc_after
 
         # for now, only support multithreading on non-windows machines
         python_version = sys.version_info  # 2.7.11 >
@@ -66,19 +67,23 @@ class MpWrapper(object):
 
             if self.n_threads is None:
                 self.n_threads = mp.cpu_count()
-            nodes = [WorkerNode(request_queue, result_queue, tracker, execute_fn) for i in range(0, self.n_threads)]
-            for node in nodes:
-                node.start()
+            nodes = list()
 
             # wait for all execution nodes to finish
             while not request_queue.is_empty() or any([node.is_alive() for node in nodes]):
+                nodes = [node for node in nodes if node.is_alive()]
+                while len(nodes) < self.n_threads:
+                    node = WorkerNode(request_queue, result_queue, tracker, execute_fn, self.recycle_proc_after)
+                    nodes.append(node)
+                    node.start()
+
                 submit_progress()
                 time.sleep(0.1)
         else:
             request_queue = FiFoQueue()
             result_queue = FiFoQueue()
             tracker = ExcecutionTracker()
-            node = WorkerNode(request_queue, result_queue, tracker, execute_fn)
+            node = WorkerNode(request_queue, result_queue, tracker, execute_fn, recycle_proc_after=0)
             for task in tasks_list:
                 request_queue.push(task)
                 node.run()  # execution will be done on the same thread (note we call run() here and not start())
@@ -115,16 +120,21 @@ class MpWrapper(object):
 # will run on same or multile new threads
 # -----------------------------------------------------------
 class WorkerNode(mp.Process):
-    def __init__(self, req_queue, result_queue, tracker, execute_fn):
+    def __init__(self, req_queue, result_queue, tracker, execute_fn, recycle_proc_after):
         super(WorkerNode, self).__init__()
         self.req_queue = req_queue
         self.result_queue = result_queue
         self.tracker = tracker
         self.execute_fn = execute_fn
+        self.recycle_proc_after = recycle_proc_after
+        self.tasks_performed = 0
 
     def run(self):
         # run until the queue is empty or termination signal sent
         while not self.tracker.should_terminate():
+            if self.recycle_proc_after > 0 and self.tasks_performed >= self.recycle_proc_after:
+                return
+
             try:
                 item = self.req_queue.pop()
                 if type(item) is EmptyQueueObj:
@@ -136,6 +146,8 @@ class WorkerNode(mp.Process):
                 msg = '#Execution error: %s \n params: %s' % (e, item)
                 logging.error(msg, exc_info=True)
                 self.tracker.increment_error(msg)
+            finally:
+                self.tasks_performed += 1
 
 
 # -----------------------------------------------------------

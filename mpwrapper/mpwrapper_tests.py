@@ -88,3 +88,33 @@ class test_execution(unittest.TestCase):
         # validate by checking that the tasks ran in the same sequence that they were added to the task list
         for i in range(0, n_items):
             self.assertEqual(task_list[i]['value1'], results[i])
+
+    def test_recycle_proc(self):
+        # set up
+        global dict_accumulator
+        dict_accumulator = dict()
+        task_list = list()
+        n_items = 100
+        for i in range(0, n_items):
+            # add task: all input params are stored in a dictionary
+            task_list.append({'value1': i, 'value2': i + 1})
+        task_list[5]['value1'] = np.NaN  # let one fail
+
+        # a function representing some type of work
+        def execute_task(task):
+            global dict_accumulator
+            import os
+            pid = os.getpid()
+            if not pid in dict_accumulator:
+                dict_accumulator[pid] = 1
+            else:
+                dict_accumulator[pid] += 1
+
+            return dict_accumulator[pid]
+
+        # action
+        test_excecutor = MpWrapper(n_threads=2, recycle_proc_after=10)
+        results = test_excecutor.run(task_list, execute_task)
+
+        # validate
+        self.assertTrue(np.max(results) <= 10)
