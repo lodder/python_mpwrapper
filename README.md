@@ -38,5 +38,8 @@ results = MpWrapper().run_with_progress(task_list, execute_task)
 
 *multithreaded_if_possible*=True
 *n_threads*=None
+*recycle_proc_after*=0
 
 **Using 'n_threads=None' will set the number of threads to cpu_count()*
+
+***To assist with memory management, specifying 'recycle_proc_after'>0 will destroy processes after the given amount of processes have been run on it and automatically spawn a new one in its place*
