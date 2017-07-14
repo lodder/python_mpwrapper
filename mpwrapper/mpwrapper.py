@@ -104,6 +104,11 @@ class MpWrapper(object):
         try:
             fn.start_print_progress()
             return self.run(tasks_list=tasks_list, execute_fn=execute_fn, progress_fn=fn.progress)
+        except KeyboardInterrupt:
+            print '\n###################'
+            print 'User cancelled'
+            print '###################\n'
+            exit(1)
         except:
             raise
         finally:
@@ -146,6 +151,9 @@ class WorkerNode(mp.Process):
                 msg = '#Execution error: %s \n params: %s' % (e, item)
                 logging.error(msg, exc_info=True)
                 self.tracker.increment_error(msg)
+            except KeyboardInterrupt:
+                self.tracker.signal_terminate()
+                exit(1)
             finally:
                 self.tasks_performed += 1
 

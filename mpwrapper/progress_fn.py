@@ -14,11 +14,12 @@ class ProgressFn():
         self.start_time = time.time()
 
     def progress(self, percent, completed, errors):
+        elapsed_time = time.time() - self.start_time
         change = not 'completed' in self.execution_tracker or \
                  self.execution_tracker['completed'] != completed or \
-                 self.execution_tracker['errors'] != errors
+                 self.execution_tracker['errors'] != errors or \
+                 elapsed_time < 60
         if change:
-            elapsed_time = time.time() - self.start_time
             est_remaining = (100 * (elapsed_time / percent) - elapsed_time) if percent > 0  else 0
             est_remaining_str = \
                 ('%.0fs' % est_remaining) if est_remaining < 60 \
@@ -31,9 +32,10 @@ class ProgressFn():
 
             self.execution_tracker['completed'] = completed
             self.execution_tracker['errors'] = errors
-            self.execution_tracker['last_progress'] = \
-                ('%100s' % '\r%.1f%% | %d completed | %d errors | %s elapsed | %s remaining' %
+            self.execution_tracker['last_progress'] = '{0: <100}'.format(
+                ('%.1f%% | %d completed | %d errors | %s elapsed | %s remaining' %
                  (percent, completed, errors, elapsed_str, est_remaining_str))
+            ) + '\r'
             sys.stdout.write(self.execution_tracker['last_progress'])
             sys.stdout.flush()
 
