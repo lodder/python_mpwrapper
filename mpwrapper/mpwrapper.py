@@ -110,9 +110,7 @@ class MpWrapper(object):
             fn.start_print_progress()
             return self.run(tasks_list=tasks_list, execute_fn=execute_fn, progress_fn=fn.progress)
         except KeyboardInterrupt:
-            print '\n###################'
-            print 'User cancelled'
-            print '###################\n'
+            print ('\n###################\nUser cancelled\n###################\n')
             exit(1)
         except:
             raise
