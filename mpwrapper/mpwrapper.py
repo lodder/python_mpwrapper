@@ -9,9 +9,10 @@ from multiprocessing.managers import BaseManager
 # -----------------------------------------------------------
 
 class MpWrapper(object):
-    def __init__(self, multithreaded_if_possible=True, n_threads=None, recycle_proc_after=0):
+    def __init__(self, multithreaded_if_possible=True, n_threads=None, recycle_proc_after=0, raise_on_error_types=[]):
         self.n_threads = n_threads
         self.recycle_proc_after = recycle_proc_after
+        self.raise_on_error_types = raise_on_error_types
 
         # for now, only support multithreading on non-windows machines
         python_version = sys.version_info  # 2.7.11 >
@@ -71,19 +72,23 @@ class MpWrapper(object):
 
             # wait for all execution nodes to finish
             while not request_queue.is_empty() or any([node.is_alive() for node in nodes]):
+                exception_raised = len([node for node in nodes if not node.is_alive() and node.exitcode != 0]) > 0
+                if exception_raised:
+                    raise Exception('Exception while executing. Please see logs for more details.')
+
                 nodes = [node for node in nodes if node.is_alive()]
                 while len(nodes) < self.n_threads:
-                    node = WorkerNode(request_queue, result_queue, tracker, execute_fn, self.recycle_proc_after)
+                    node = WorkerNode(request_queue, result_queue, tracker, execute_fn, self.recycle_proc_after, self.raise_on_error_types)
                     nodes.append(node)
                     node.start()
 
                 submit_progress()
-                time.sleep(0.1)
+                time.sleep(0.5)
         else:
             request_queue = FiFoQueue()
             result_queue = FiFoQueue()
             tracker = ExcecutionTracker()
-            node = WorkerNode(request_queue, result_queue, tracker, execute_fn, recycle_proc_after=0)
+            node = WorkerNode(request_queue, result_queue, tracker, execute_fn, recycle_proc_after=0, raise_on_error_types=self.raise_on_error_types)
             for task in tasks_list:
                 request_queue.push(task)
                 node.run()  # execution will be done on the same thread (note we call run() here and not start())
@@ -125,13 +130,14 @@ class MpWrapper(object):
 # will run on same or multile new threads
 # -----------------------------------------------------------
 class WorkerNode(mp.Process):
-    def __init__(self, req_queue, result_queue, tracker, execute_fn, recycle_proc_after):
+    def __init__(self, req_queue, result_queue, tracker, execute_fn, recycle_proc_after, raise_on_error_types):
         super(WorkerNode, self).__init__()
         self.req_queue = req_queue
         self.result_queue = result_queue
         self.tracker = tracker
         self.execute_fn = execute_fn
         self.recycle_proc_after = recycle_proc_after
+        self.raise_on_error_types = raise_on_error_types
         self.tasks_performed = 0
 
     def run(self):
@@ -151,9 +157,12 @@ class WorkerNode(mp.Process):
                 msg = '#Execution error: %s \n params: %s' % (e, item)
                 logging.error(msg, exc_info=True)
                 self.tracker.increment_error(msg)
+                if type(e).__name__ in self.raise_on_error_types:
+                    self.tracker.signal_terminate()
+                    raise
             except KeyboardInterrupt:
                 self.tracker.signal_terminate()
-                exit(1)
+                raise
             finally:
                 self.tasks_performed += 1
 

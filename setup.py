@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='mpwrapper',
-    version='1.2.3',
+    version='1.2.4',
     description='A simple wrapper written to make the use of Python multiprocessing easy to use',
     author='Shaun Lodder',
     author_email='shaun.lodder@gmail.com',
