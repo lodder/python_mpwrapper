@@ -152,7 +152,8 @@ class WorkerNode(mp.Process):
                 self.result_queue.push(output)
                 self.tracker.increment_success()
             except Exception as e:
-                msg = '#Execution error: %s \n params: %s' % (e, item)
+                import traceback
+                msg = '#Execution error: %s \n params: %s\n%s' % (e, item, traceback.format_exc())
                 logging.error(msg, exc_info=True)
                 self.tracker.increment_error(msg)
                 if type(e).__name__ in self.raise_on_error_types:
