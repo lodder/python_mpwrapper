@@ -84,6 +84,9 @@ class MpWrapper(object):
 
                 submit_progress()
                 time.sleep(0.5)
+
+            if tracker.should_terminate():
+                exit(1)
         else:
             request_queue = FiFoQueue()
             result_queue = FiFoQueue()
